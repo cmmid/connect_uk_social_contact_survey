@@ -1,4 +1,4 @@
-# Post-pandemic social contact patterns in the United Kingdom: the Connect survey
+# Post-pandemic social contact patterns in the United Kingdom: the Reconnect survey
 
 Lucy Goodfellow¹ *†, Billy J. Quilty¹'², Kevin van Zandvoort¹‡, W. John Edmunds¹‡
 
@@ -11,16 +11,16 @@ Lucy Goodfellow¹ *†, Billy J. Quilty¹'², Kevin van Zandvoort¹‡, W. John 
 
 ## Overview
 
-This repository contains the code and analysis for the Connect study, a comprehensive study designed to understand patterns of social interactions across different age groups and settings in the United Kingdom.
+This repository contains the code and analysis for the Reconnect study, a comprehensive study designed to understand patterns of social interactions across different age groups and settings in the United Kingdom.
 
-This repository reproduces the analyses which can be carried out on the survey dataset `connect_survey.rds`, which can be found on Zenodo at (INSERT LINK).
+This repository reproduces the analyses which can be carried out on the survey dataset `reconnect_survey.rds`, which can be found on Zenodo at (INSERT LINK).
 
 ## Data Requirements
 
-To run the analyses, you will need to download the Connect survey dataset:
+To run the analyses, you will need to download the Reconnect survey dataset:
 
 1. Visit the Zenodo repository at: (INSERT LINK)
-2. Download the file `connect_survey.rds`
+2. Download the file `reconnect_survey.rds`
 3. Place the downloaded file in the `data/` directory of this repository
 
 The repository also requires census data for population weighting (see individual analysis instructions below).
