@@ -955,7 +955,7 @@ nb_matrix_fit <- function(
   names(weighted_bs) <- locations
   
   if(save == T){
-    saveRDS(weighted_bs, here::here('results',survey,'neg_bin',paste0('nb_',gsub('p_','',participant_var),'.rds')))  
+    saveRDS(weighted_bs, here::here('results',paste0('nb_',gsub('p_','',participant_var),'_', n_bootstrap,'.rds')))  
   }
   
   weighted_bs
@@ -1218,6 +1218,16 @@ plot_and_save_mu_matrix <- function(matrix_data,
   
   folder <- gsub('p_', '', p_var)
   
+  if(!file.exists(here::here('results',folder))){
+    dir.create(here::here('results',folder))
+  }
+  if(!file.exists(here::here('results',folder,variable))){
+    dir.create(here::here('results',folder,variable))
+  }
+  if(!file.exists(here::here('results',folder,variable,ifelse(uncertainty,'uncertainty','contacts')))){
+    dir.create(here::here('results',folder,variable,ifelse(uncertainty,'uncertainty','contacts')))
+  }
+  
   matrix_plots <- map(.x = matrix_data, 
                       .f = ~plot_mu_matrix(.x,
                                            p_var, c_var,
@@ -1225,7 +1235,7 @@ plot_and_save_mu_matrix <- function(matrix_data,
                                            uncertainty))
   
   map(.x = names(matrix_plots), 
-      .f = ~ggsave(here::here('results',survey,'neg_bin',folder,variable,
+      .f = ~ggsave(here::here('results',folder,variable,
                               ifelse(uncertainty,'uncertainty','contacts'),
                               paste0('nb_plot_',tolower(.x), ifelse(uncertainty,'_ui',''),'.png')),
                    matrix_plots[[.x]],
@@ -1242,7 +1252,7 @@ plot_and_save_mu_matrix <- function(matrix_data,
   plot_nb <- patchwork::wrap_plots(matrix_plots, design = layout,
                         plot_layout(guides = 'collect'))
   
-  ggsave(here::here('results',survey,'neg_bin',folder,variable,
+  ggsave(here::here('results',folder,variable,
                     ifelse(uncertainty,'uncertainty','contacts'),
                     paste0('nb_plot_combined', ifelse(uncertainty,'_ui',''),'.png')),
          plot_nb,

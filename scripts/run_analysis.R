@@ -25,7 +25,7 @@ source(here::here('scripts','analyses','negative_binom','negative_binomial_fcns.
 source(here::here('scripts','analyses','age_structure.R'))
 
 ## load data ##
-connect_survey <- readRDS(here::here('data','connect_survey.rds'))
+reconnect_survey <- readRDS(here::here('data','reconnect_survey.rds'))
 
 # load age weights for large_n
 polymod_wts <- polymod_weights()

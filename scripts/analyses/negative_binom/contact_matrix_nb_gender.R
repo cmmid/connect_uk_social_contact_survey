@@ -1,7 +1,7 @@
 
 ## reformatting survey data ##
 
-part <- connect_survey$participants %>% 
+part <- reconnect_survey$participants %>% 
   rename(p_id = part_id,
          p_age_group = part_age_group,
          p_adult_child = part_adult_child,
@@ -9,7 +9,7 @@ part <- connect_survey$participants %>%
          p_ethnicity = part_ethnicity,
          p_sec_input = part_ses)
 
-contacts <- connect_survey$contacts %>% 
+contacts <- reconnect_survey$contacts %>% 
   rename(c_id = cnt_id,
          p_id = part_id,
          c_location = cnt_location,
@@ -17,6 +17,11 @@ contacts <- connect_survey$contacts %>%
          c_sex = cnt_gender,
          c_ethnicity = cnt_ethnicity,
          c_sec_input = cnt_ses)
+
+# if results folder doesn't exist, create
+if(!file.exists('results')){dir.create('results')}
+# if gender folder doesn't exist, create
+if(!file.exists('results/gender_contacts')){dir.create('results/gender_contacts')}
 
 ## Gender-gender plots (home location only)
 
@@ -43,8 +48,8 @@ plot_gender_matrix <- function(i){
     save = F
   )
   
-  saveRDS(gender_contacts, here::here('results',survey,'neg_bin',paste0('nb_',tolower(p_gender_i),'_to_',tolower(c_sex_i),'.rds'))) 
-  # gender_contacts <- readRDS(here::here('results',survey,'neg_bin',paste0('nb_',tolower(p_gender_i),'_to_',tolower(c_sex_i),'.rds'))) 
+  saveRDS(gender_contacts, here::here('results',paste0('nb_',tolower(p_gender_i),'_to_',tolower(c_sex_i),'.rds'))) 
+  # gender_contacts <- readRDS(here::here('results',paste0('nb_',tolower(p_gender_i),'_to_',tolower(c_sex_i),'.rds'))) 
   
   gender_matrices <- map(.x = gender_contacts, 
                          .f = ~plot_mu_matrix(.x,
@@ -63,7 +68,7 @@ matrix_plots_tot <- mclapply(1:4, plot_gender_matrix, mc.cores = 4)
 patch <- patchwork::wrap_plots(matrix_plots_tot, ncol = 2)
   
 ggsave(
-    filename = file.path('results', survey, 'neg_bin', 'gender_contacts', paste0('Home', "_combined.png")),
+    filename = file.path('results', 'gender_contacts', paste0('Home', "_combined.png")),
     plot = patch,
     width = 18,
     height = 18,

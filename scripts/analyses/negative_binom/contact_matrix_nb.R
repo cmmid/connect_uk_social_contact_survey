@@ -1,7 +1,7 @@
 
 ## reformatting survey data ##
 
-part <- connect_survey$participants %>% 
+part <- reconnect_survey$participants %>% 
   rename(p_id = part_id,
          p_age_group = part_age_group,
          p_adult_child = part_adult_child,
@@ -9,7 +9,7 @@ part <- connect_survey$participants %>%
          p_ethnicity = part_ethnicity,
          p_sec_input = part_ses)
 
-contacts <- connect_survey$contacts %>% 
+contacts <- reconnect_survey$contacts %>% 
   rename(c_id = cnt_id,
          p_id = part_id,
          c_location = cnt_location,
@@ -18,24 +18,26 @@ contacts <- connect_survey$contacts %>%
          c_ethnicity = cnt_ethnicity,
          c_sec_input = cnt_ses)
 
+# if results folder doesn't exist, create
+if(!file.exists('results')){dir.create('results')}
 
 ###################
 #### AGE GROUP ####
 ###################
 
-nb_age_group <- nb_matrix_fit(
-  participant_data = part,
-  contact_data = contacts,
-  participant_var = "p_age_group",
-  contact_var = "c_age_group",
-  n_bootstrap = 1000,
-  trunc = max_n_contacts,
-  polymod_weighting = polymod_wts,
-  weighting_vec = c('p_gender','p_ethnicity','day_week'),
-  locations = c("Total", "Home", "Work", "School", "Other")
-)
+# nb_age_group <- nb_matrix_fit(
+#   participant_data = part,
+#   contact_data = contacts,
+#   participant_var = "p_age_group",
+#   contact_var = "c_age_group",
+#   n_bootstrap = 1000,
+#   trunc = max_n_contacts,
+#   polymod_weighting = polymod_wts,
+#   weighting_vec = c('p_gender','p_ethnicity','day_week'),
+#   locations = c("Total", "Home", "Work", "School", "Other")
+# )
 
-# nb_age_group <- readRDS(here::here('results',survey,'neg_bin','nb_age_group.rds'))
+nb_age_group <- readRDS(here::here('results','nb_age_group_1000.rds'))
 
 cat('\nAge done, n bootstraps = ', n_distinct(nb_age_group[[1]]$bs_index), '\n', sep = '')
 
@@ -79,22 +81,22 @@ plot_and_save_mu_matrix(nb_age_group,
 #### ETHNICITY ####
 ###################
 
-nb_ethnicity <- nb_matrix_fit(
-  participant_data = part,
-  contact_data = contacts,
-  participant_var = "p_ethnicity",
-  contact_var = "c_ethnicity",
-  n_bootstrap = 1000,
-  trunc = max_n_contacts,
-  polymod_weighting = polymod_wts,
-  weighting_vec = c('p_gender','p_age_group','day_week'),
-  locations = c("Total", "Home", "Work", "School", "Other"),
-  save = T,
-  impute_contact = T,
-  impute_vars = c('p_ethnicity')
-)
+# nb_ethnicity <- nb_matrix_fit(
+#   participant_data = part,
+#   contact_data = contacts,
+#   participant_var = "p_ethnicity",
+#   contact_var = "c_ethnicity",
+#   n_bootstrap = 1000,
+#   trunc = max_n_contacts,
+#   polymod_weighting = polymod_wts,
+#   weighting_vec = c('p_gender','p_age_group','day_week'),
+#   locations = c("Total", "Home", "Work", "School", "Other"),
+#   save = T,
+#   impute_contact = T,
+#   impute_vars = c('p_ethnicity')
+# )
 
-# nb_ethnicity <- readRDS(here::here('results',survey,'neg_bin','nb_ethnicity.rds'))
+nb_ethnicity <- readRDS(here::here('results','nb_ethnicity_1000.rds'))
 
 cat('\nEthnicity done, n bootstraps = ', n_distinct(nb_ethnicity[[1]]$bs_index), '\n', sep = '')
 
@@ -169,7 +171,7 @@ nb_sec_input <- nb_matrix_fit(
   impute_vars = c('p_sec_input')
 )
 
-# nb_sec_input <- readRDS(here::here('results',survey,'neg_bin','nb_sec_input.rds'))
+# nb_sec_input <- readRDS(here::here('results','nb_sec_input.rds'))
 
 cat('\nNS-SEC done, n bootstraps = ', n_distinct(nb_sec_input[[1]]$bs_index), '\n', sep = '')
 
@@ -207,7 +209,7 @@ plot_and_save_mu_matrix(nb_sec_input,
 matrs_fig <- (age_matrices | ethnicity_matrices[[1]] + sec_matrices[[1]]) + plot_layout(nrow=2) + plot_annotation(tag_levels = c('a')); matrs_fig
 
 ggsave(
-  filename = file.path("results", survey,'neg_bin', "contact_matrs.pdf"),
+  filename = file.path("results", "contact_matrs.pdf"),
   plot = matrs_fig,
   width = 20,
   height = 18,
@@ -216,7 +218,7 @@ ggsave(
 )
 
 ggsave(
-  filename = file.path("results", survey, 'neg_bin', "contact_matrs.png"),
+  filename = file.path("results", "contact_matrs.png"),
   plot = matrs_fig,
   width = 20,
   height = 18,
@@ -259,7 +261,7 @@ save_matrices_values_w <- save_matrices_values_w %>% arrange(p_var, c_var) %>%
   select(var, p_var, c_var, Total, Home, Work, School, Other)
 
 write_xlsx(save_matrices_values_w, 
-          here::here('results',survey,'neg_bin','contact_matrix_values.xlsx'))
+          here::here('results','contact_matrix_values.xlsx'))
 
 
 
@@ -271,7 +273,7 @@ assortativity <- rbind(
   ses_assortativity_dt
 )
 
-write_xlsx(assortativity, here::here('results',survey,'neg_bin','assortativity.xlsx'))
+write_xlsx(assortativity, here::here('results','assortativity.xlsx'))
 
 assortativity$variable <- factor(assortativity$variable, levels = c('Q','q'))
 assortativity$location <- factor(assortativity$location, levels = c('Total','Home','Work','School','Other'))
@@ -286,7 +288,7 @@ assortativity %>% filter(variable == 'Q') %>%
   theme(legend.position = 'none') + 
   scale_color_brewer(palette = 'Paired') + xlab('Contact setting') + ylab('Assortativity')
 
-ggsave(here::here('results',survey,'neg_bin','assortativity_filt.png'), width = 10, height = 4)
+ggsave(here::here('results','assortativity_filt.png'), width = 10, height = 4)
  
 
 
