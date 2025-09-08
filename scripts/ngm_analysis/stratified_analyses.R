@@ -39,7 +39,7 @@ message(paste("Sourced plotting functions from:", plotting_functions_script))
 # --- Global Parameters & Paths ---
 message("Defining global parameters and paths...")
 # Data paths (relative to project root via here::here())
-RAW_SURVEY_DATA_RDS_PATH <- here::here("data", "connect_survey.rds")
+RAW_SURVEY_DATA_RDS_PATH <- here::here("data", "reconnect_survey.rds")
 
 # Paths for new 2-way stratified census files
 CENSUS_DATA_AGE_ETH_QS_PATH <- here::here("data", "derived", "census_age_eth_data.qs")

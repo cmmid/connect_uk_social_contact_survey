@@ -301,7 +301,7 @@ load_and_preprocess_survey_data <- function(survey_rds_path,
 
     # --- Pre-process and Bin Ages ---
     participants_dt[, part_age_group := cut(part_age, breaks = age_breaks, labels = age_levels, right = FALSE, include.lowest = TRUE)]
-    contacts_dt[, cnt_age_group := cut(cnt_age, breaks = age_breaks, labels = age_levels, right = FALSE, include.lowest = TRUE)]
+    contacts_dt[, cnt_age_group := cut(cnt_age_exact, breaks = age_breaks, labels = age_levels, right = FALSE, include.lowest = TRUE)]
 
     # --- Impute Missing Contact Data ---
     if ("fcn_impute" %in% ls(envir = .GlobalEnv)) {
