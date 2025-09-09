@@ -1,22 +1,28 @@
 
 ## reformatting survey data ##
 
-part <- reconnect_survey$participants %>% 
+part <- reconnect_participant %>% 
   rename(p_id = part_id,
          p_age_group = part_age_group,
          p_adult_child = part_adult_child,
          p_gender = part_gender,
          p_ethnicity = part_ethnicity,
-         p_sec_input = part_ses)
+         p_sec_input = part_ses) %>% 
+  mutate(p_gender = case_when(p_gender == 'F' ~ 'Female',
+                           p_gender == 'M' ~ 'Male',
+                           T ~ NA))
 
-contacts <- reconnect_survey$contacts %>% 
+contacts <- reconnect_contact %>% 
   rename(c_id = cnt_id,
          p_id = part_id,
          c_location = cnt_location,
          c_age_group = cnt_age_group,
          c_sex = cnt_gender,
          c_ethnicity = cnt_ethnicity,
-         c_sec_input = cnt_ses)
+         c_sec_input = cnt_ses) %>% 
+  mutate(c_sex = case_when(c_sex == 'F' ~ 'Female',
+                           c_sex == 'M' ~ 'Male',
+                           T ~ NA))
 
 # if results folder doesn't exist, create
 if(!file.exists('results')){dir.create('results')}
@@ -25,19 +31,19 @@ if(!file.exists('results')){dir.create('results')}
 #### AGE GROUP ####
 ###################
 
-# nb_age_group <- nb_matrix_fit(
-#   participant_data = part,
-#   contact_data = contacts,
-#   participant_var = "p_age_group",
-#   contact_var = "c_age_group",
-#   n_bootstrap = 1000,
-#   trunc = max_n_contacts,
-#   polymod_weighting = polymod_wts,
-#   weighting_vec = c('p_gender','p_ethnicity','day_week'),
-#   locations = c("Total", "Home", "Work", "School", "Other")
-# )
+nb_age_group <- nb_matrix_fit(
+  participant_data = part,
+  contact_data = contacts,
+  participant_var = "p_age_group",
+  contact_var = "c_age_group",
+  n_bootstrap = 1000,
+  trunc = max_n_contacts,
+  polymod_weighting = polymod_wts,
+  weighting_vec = c('p_gender','p_ethnicity','day_week'),
+  locations = c("Total", "Home", "Work", "School", "Other")
+)
 
-nb_age_group <- readRDS(here::here('results','nb_age_group_1000.rds'))
+# nb_age_group <- readRDS(here::here('results','nb_age_group_1000.rds'))
 
 cat('\nAge done, n bootstraps = ', n_distinct(nb_age_group[[1]]$bs_index), '\n', sep = '')
 
@@ -81,22 +87,22 @@ plot_and_save_mu_matrix(nb_age_group,
 #### ETHNICITY ####
 ###################
 
-# nb_ethnicity <- nb_matrix_fit(
-#   participant_data = part,
-#   contact_data = contacts,
-#   participant_var = "p_ethnicity",
-#   contact_var = "c_ethnicity",
-#   n_bootstrap = 1000,
-#   trunc = max_n_contacts,
-#   polymod_weighting = polymod_wts,
-#   weighting_vec = c('p_gender','p_age_group','day_week'),
-#   locations = c("Total", "Home", "Work", "School", "Other"),
-#   save = T,
-#   impute_contact = T,
-#   impute_vars = c('p_ethnicity')
-# )
+nb_ethnicity <- nb_matrix_fit(
+  participant_data = part,
+  contact_data = contacts,
+  participant_var = "p_ethnicity",
+  contact_var = "c_ethnicity",
+  n_bootstrap = 1000,
+  trunc = max_n_contacts,
+  polymod_weighting = polymod_wts,
+  weighting_vec = c('p_gender','p_age_group','day_week'),
+  locations = c("Total", "Home", "Work", "School", "Other"),
+  save = T,
+  impute_contact = T,
+  impute_vars = c('p_ethnicity')
+)
 
-nb_ethnicity <- readRDS(here::here('results','nb_ethnicity_1000.rds'))
+# nb_ethnicity <- readRDS(here::here('results','nb_ethnicity_1000.rds'))
 
 cat('\nEthnicity done, n bootstraps = ', n_distinct(nb_ethnicity[[1]]$bs_index), '\n', sep = '')
 

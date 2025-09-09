@@ -25,7 +25,18 @@ source(here::here('scripts','analyses','negative_binom','negative_binomial_fcns.
 source(here::here('scripts','analyses','age_structure.R'))
 
 ## load data ##
-reconnect_survey <- readRDS(here::here('data','reconnect_survey.rds'))
+reconnect_participant_common <- read_csv(here::here('data','zenodo','reconnect_participant_common.csv'), show_col_types = F)
+reconnect_participant_extra <- read_csv(here::here('data','zenodo','reconnect_participant_extra.csv'), show_col_types = F)
+reconnect_participant_sday <- read_csv(here::here('data','zenodo','reconnect_sday.csv'), show_col_types = F)
+reconnect_participant <- left_join(reconnect_participant_common, 
+                                   reconnect_participant_extra, 
+                                   by = 'part_id') %>% left_join(reconnect_participant_sday, by = 'part_id')
+
+reconnect_contact_common <- read_csv(here::here('data','zenodo','reconnect_contact_common.csv'), show_col_types = F)
+reconnect_contact_extra <- read_csv(here::here('data','zenodo','reconnect_contact_extra.csv'), show_col_types = F)
+reconnect_contact <- left_join(reconnect_contact_common, 
+                               reconnect_contact_extra, 
+                                   by = c('cnt_id','part_id'))
 
 # load age weights for large_n
 polymod_wts <- polymod_weights()
@@ -33,5 +44,6 @@ polymod_wts <- polymod_weights()
 # negative binomial contact matrices ##
 source(here::here('scripts','analyses','negative_binom','contact_matrix_nb.R'))
 
-## negative binomial contact matrices (gender-specific) ##
-source(here::here('scripts','analyses','negative_binom','contact_matrix_nb_gender.R'))
+## NGM analyses ##
+source(here::here('scripts','ngm_analysis','run_full_ngm_analysis.R'))
+
