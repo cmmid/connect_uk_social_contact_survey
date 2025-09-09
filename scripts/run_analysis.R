@@ -44,6 +44,3 @@ polymod_wts <- polymod_weights()
 # negative binomial contact matrices ##
 source(here::here('scripts','analyses','negative_binom','contact_matrix_nb.R'))
 
-## NGM analyses ##
-source(here::here('scripts','ngm_analysis','run_full_ngm_analysis.R'))
-

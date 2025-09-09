@@ -13,15 +13,15 @@ Lucy Goodfellow¹ *†, Billy J. Quilty¹'², Kevin van Zandvoort¹‡, W. John 
 
 This repository contains the code and analysis for the Reconnect study, a comprehensive study designed to understand patterns of social interactions across different age groups and settings in the United Kingdom.
 
-This repository reproduces the analyses which can be carried out on the survey dataset `reconnect_survey.rds`, which can be found on Zenodo at (INSERT LINK).
+This repository reproduces the analyses which can be carried out on the survey datasets, which can be found on Zenodo at (INSERT LINK).
 
 ## Data Requirements
 
 To run the analyses, you will need to download the Reconnect survey dataset:
 
 1. Visit the Zenodo repository at: (INSERT LINK)
-2. Download the file `reconnect_survey.rds`
-3. Place the downloaded file in the `data/` directory of this repository
+2. Download the data files
+3. Place the downloaded file in a `data/zenodo/` directory of this repository
 
 The repository also requires census data for population weighting (see individual analysis instructions below).
 
