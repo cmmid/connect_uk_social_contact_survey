@@ -24,10 +24,15 @@ message("\n--- Step 4: Creating appendix tables ---")
 source("scripts/ngm_analysis/create_appendix_tables.R")
 
 # --- 5. Render Quarto Report ---
-message("\n--- Step 5: Rendering Quarto report ---")
-if (!requireNamespace("quarto", quietly = TRUE)) {
-    install.packages("quarto")
+message("\n--- Step 5: Rendering Quarto report (if present) ---")
+qmd_path <- "scripts/ngm_analysis/ngm_analysis.qmd"
+if (file.exists(qmd_path)) {
+    if (!requireNamespace("quarto", quietly = TRUE)) {
+        install.packages("quarto")
+    }
+    quarto::quarto_render(qmd_path)
+} else {
+    message("Quarto file not found (", qmd_path, "). Skipping report render.")
 }
-quarto::quarto_render("scripts/ngm_analysis/ngm_analysis.qmd")
 
 message("\n--- FULL ANALYSIS PIPELINE COMPLETE ---")

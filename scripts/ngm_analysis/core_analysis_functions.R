@@ -277,31 +277,123 @@ load_and_preprocess_survey_data <- function(survey_rds_path,
                                             ses_levels, eth_levels,
                                             gender_levels) {
     message("Loading and pre-processing raw survey data from: ", survey_rds_path)
-    if (!file.exists(survey_rds_path)) {
-        stop("CRITICAL ERROR: Raw survey data file not found at ", survey_rds_path)
-    }
-    survey_data_raw <- readRDS(survey_rds_path)
-    if (is.null(survey_data_raw) || !is.list(survey_data_raw) ||
-        !all(c("participants", "contacts") %in% names(survey_data_raw))) {
-        stop("CRITICAL ERROR: Survey data is not in the expected list format or missing key elements.")
-    }
 
-    participants_dt <- as.data.table(survey_data_raw$participants)
-    contacts_dt <- as.data.table(survey_data_raw$contacts)
+    participants_dt <- NULL
+    contacts_dt <- NULL
+
+    # Support two sources:
+    # 1) A single RDS file containing list(participants=..., contacts=...)
+    # 2) A directory containing Zenodo CSVs in data/zenodo/ format
+    if (dir.exists(survey_rds_path)) {
+        # Zenodo CSV directory
+        zenodo_dir <- survey_rds_path
+        required_files <- c(
+            "reconnect_participant_common.csv",
+            "reconnect_participant_extra.csv",
+            "reconnect_sday.csv",
+            "reconnect_contact_common.csv",
+            "reconnect_contact_extra.csv"
+        )
+        present <- file.exists(file.path(zenodo_dir, required_files))
+        if (!all(present)) {
+            missing_files <- paste(required_files[!present], collapse = ", ")
+            stop(paste0("CRITICAL ERROR: Zenodo CSV directory missing required files: ", missing_files))
+        }
+
+        # Read using data.table::fread for speed and minimal deps
+        part_common <- data.table::fread(file.path(zenodo_dir, "reconnect_participant_common.csv"), showProgress = FALSE)
+        part_extra <- data.table::fread(file.path(zenodo_dir, "reconnect_participant_extra.csv"), showProgress = FALSE)
+        part_sday <- data.table::fread(file.path(zenodo_dir, "reconnect_sday.csv"), showProgress = FALSE)
+        participants_dt <- merge(part_common, part_extra, by = "part_id", all.x = TRUE, allow.cartesian = TRUE)
+        participants_dt <- merge(participants_dt, part_sday, by = "part_id", all.x = TRUE, allow.cartesian = TRUE)
+
+        cnt_common <- data.table::fread(file.path(zenodo_dir, "reconnect_contact_common.csv"), showProgress = FALSE)
+        cnt_extra <- data.table::fread(file.path(zenodo_dir, "reconnect_contact_extra.csv"), showProgress = FALSE)
+        contacts_dt <- merge(cnt_common, cnt_extra, by = c("cnt_id", "part_id"), all.x = TRUE, allow.cartesian = TRUE)
+
+        # Normalise column names used downstream
+        # Ensure numeric age columns exist if provided as character
+        if ("part_age" %in% names(participants_dt)) participants_dt[, part_age := as.numeric(part_age)]
+        if ("cnt_age_exact" %in% names(contacts_dt)) contacts_dt[, cnt_age_exact := as.numeric(cnt_age_exact)]
+
+        # Ensure expected key columns exist
+        required_part_cols <- c("part_id", "part_ethnicity", "part_ses", "part_gender")
+        missing_part <- setdiff(required_part_cols, names(participants_dt))
+        if (length(missing_part) > 0) stop(paste("Participants missing required columns:", paste(missing_part, collapse = ", ")))
+
+        required_cnt_cols <- c("part_id", "cnt_ethnicity", "cnt_ses", "cnt_gender")
+        missing_cnt <- setdiff(required_cnt_cols, names(contacts_dt))
+        if (length(missing_cnt) > 0) stop(paste("Contacts missing required columns:", paste(missing_cnt, collapse = ", ")))
+    } else if (file.exists(survey_rds_path)) {
+        # RDS list format
+        survey_data_raw <- readRDS(survey_rds_path)
+        if (is.null(survey_data_raw) || !is.list(survey_data_raw) ||
+            !all(c("participants", "contacts") %in% names(survey_data_raw))) {
+            stop("CRITICAL ERROR: Survey data is not in the expected list format or missing key elements.")
+        }
+        participants_dt <- as.data.table(survey_data_raw$participants)
+        contacts_dt <- as.data.table(survey_data_raw$contacts)
+    } else {
+        stop("CRITICAL ERROR: Provided survey data path does not exist: ", survey_rds_path)
+    }
     initial_rows_participants <- nrow(participants_dt)
     initial_rows_contacts <- nrow(contacts_dt)
 
-    # --- Add Gender Columns if they don't exist, mapping from sex ---
+    # --- Add/Normalize Gender Columns ---
     if (!"part_gender" %in% names(participants_dt) && "part_sex" %in% names(participants_dt)) {
         participants_dt[, part_gender := part_sex]
     }
     if (!"cnt_gender" %in% names(contacts_dt) && "cnt_sex" %in% names(contacts_dt)) {
         contacts_dt[, cnt_gender := cnt_sex]
     }
+    # Recode short codes to full labels expected downstream
+    if ("part_gender" %in% names(participants_dt)) {
+        participants_dt[, part_gender := fifelse(
+            part_gender %in% c("M", "Male", "male", "Boy"), "Male",
+            fifelse(
+                part_gender %in% c("F", "Female", "female", "Girl"), "Female",
+                fifelse(is.na(part_gender) | part_gender == "", "Unknown", as.character(part_gender))
+            )
+        )]
+    }
+    if ("cnt_gender" %in% names(contacts_dt)) {
+        contacts_dt[, cnt_gender := fifelse(
+            cnt_gender %in% c("M", "Male", "male", "Boy"), "Male",
+            fifelse(
+                cnt_gender %in% c("F", "Female", "female", "Girl"), "Female",
+                fifelse(is.na(cnt_gender) | cnt_gender == "", "Unknown", as.character(cnt_gender))
+            )
+        )]
+    }
 
     # --- Pre-process and Bin Ages ---
-    participants_dt[, part_age_group := cut(part_age, breaks = age_breaks, labels = age_levels, right = FALSE, include.lowest = TRUE)]
-    contacts_dt[, cnt_age_group := cut(cnt_age_exact, breaks = age_breaks, labels = age_levels, right = FALSE, include.lowest = TRUE)]
+    # If pre-binned age groups exist (e.g. from Zenodo CSVs), keep values as-is for now.
+    # Downstream, stratified_analyses may override to custom bands and will set factors.
+    if (!"part_age_group" %in% names(participants_dt)) {
+        if ("part_age" %in% names(participants_dt)) {
+            participants_dt[, part_age_group := cut(part_age, breaks = age_breaks, labels = age_levels, right = FALSE, include.lowest = TRUE)]
+        } else {
+            stop("Participants data missing both 'part_age_group' and 'part_age'.")
+        }
+    } else {
+        # ensure character to allow later re-leveling
+        participants_dt[, part_age_group := as.character(part_age_group)]
+    }
+
+    # Provide cnt_age convenience if only exact age present
+    if (!"cnt_age" %in% names(contacts_dt) && "cnt_age_exact" %in% names(contacts_dt)) {
+        contacts_dt[, cnt_age := as.numeric(cnt_age_exact)]
+    }
+
+    if (!"cnt_age_group" %in% names(contacts_dt)) {
+        if ("cnt_age_exact" %in% names(contacts_dt)) {
+            contacts_dt[, cnt_age_group := cut(cnt_age_exact, breaks = age_breaks, labels = age_levels, right = FALSE, include.lowest = TRUE)]
+        } else {
+            stop("Contacts data missing both 'cnt_age_group' and 'cnt_age_exact'.")
+        }
+    } else {
+        contacts_dt[, cnt_age_group := as.character(cnt_age_group)]
+    }
 
     # --- Impute Missing Contact Data ---
     if ("fcn_impute" %in% ls(envir = .GlobalEnv)) {
@@ -325,7 +417,19 @@ load_and_preprocess_survey_data <- function(survey_rds_path,
         )
         contacts_dt <- imputed_eth_data[, part_ethnicity := NULL]
     } else {
-        warning("fcn_impute not found. Imputation for contacts will be skipped.")
+        message("Note: fcn_impute not found in global environment. Skipping contact imputation step.")
+    }
+
+    # --- Ensure Under-17s are classified as "Under 17" for SES ---
+    # Align survey SES with census logic: anyone in age bands with lower bound < 16
+    # should be placed in the special SES category "Under 17".
+    # This prevents children from appearing in NS-SeC classes 1–7 in Age×SES analyses.
+    under17_age_groups <- c("0-4", "5-9", "10-14", "15-19")
+    if ("part_age_group" %in% names(participants_dt) && "part_ses" %in% names(participants_dt)) {
+        participants_dt[as.character(part_age_group) %in% under17_age_groups, part_ses := "Under 17"]
+    }
+    if ("cnt_age_group" %in% names(contacts_dt) && "cnt_ses" %in% names(contacts_dt)) {
+        contacts_dt[as.character(cnt_age_group) %in% under17_age_groups, cnt_ses := "Under 17"]
     }
 
     # --- Filter out "Unknown" or NA values AFTER imputation ---
@@ -342,54 +446,22 @@ load_and_preprocess_survey_data <- function(survey_rds_path,
     participants_dt[part_ethnicity %in% c("Mixed", "Other"), part_ethnicity := "Mixed/Other"]
     contacts_dt[cnt_ethnicity %in% c("Mixed", "Other"), cnt_ethnicity := "Mixed/Other"]
 
-    # --- Factorize all demographic columns for consistency ---
-    factorize_column <- function(dt, col_name, levels_vec) {
-        if (col_name %in% names(dt)) {
-            dt[, (col_name) := factor(get(col_name), levels = levels_vec)]
+    # --- Day-of-week column handling ---
+    # Accept either 'day_week' (already binned weekday/weekend) or raw 'dayofweek' from Zenodo sday CSV
+    if (!"day_week" %in% names(participants_dt)) {
+        if ("dayofweek" %in% names(participants_dt)) {
+            # Map raw weekday strings to weekday/weekend
+            participants_dt[, day_week := fifelse(tolower(dayofweek) %in% c("saturday", "sunday"), "weekend", "weekday")]
+            participants_dt[, day_week := factor(day_week, levels = c("weekday", "weekend"))]
         }
-        return(dt)
+    } else {
+        # Ensure expected factor levels if present
+        participants_dt[, day_week := factor(as.character(day_week), levels = c("weekday", "weekend"))]
     }
 
-    participants_dt <- factorize_column(participants_dt, "part_age_group", age_levels)
-    participants_dt <- factorize_column(participants_dt, "part_ses", ses_levels)
-    participants_dt <- factorize_column(participants_dt, "part_ethnicity", eth_levels)
-    participants_dt <- factorize_column(participants_dt, "part_gender", gender_levels)
-
-    contacts_dt <- factorize_column(contacts_dt, "cnt_age_group", age_levels)
-    contacts_dt <- factorize_column(contacts_dt, "cnt_ses", ses_levels)
-    contacts_dt <- factorize_column(contacts_dt, "cnt_ethnicity", eth_levels)
-    contacts_dt <- factorize_column(contacts_dt, "cnt_gender", gender_levels)
-
-    # --- Filter out any NAs created during factor conversion ---
-    # This catches any survey values that didn't match the predefined factor levels
-    rows_before_factor_na_filter_participants <- nrow(participants_dt)
-    rows_before_factor_na_filter_contacts <- nrow(contacts_dt)
-
-    # Filter participants for any NAs in stratification variables (including age group)
-    participants_dt <- participants_dt[!is.na(part_ethnicity) & !is.na(part_ses) & !is.na(part_gender) & !is.na(part_age_group)]
-    # Filter contacts for any NAs in stratification variables (including age group)
-    contacts_dt <- contacts_dt[!is.na(cnt_ethnicity) & !is.na(cnt_ses) & !is.na(cnt_gender) & !is.na(cnt_age_group)]
-
-    if (nrow(participants_dt) < rows_before_factor_na_filter_participants) {
-        message(paste(
-            "  Filtered", rows_before_factor_na_filter_participants - nrow(participants_dt),
-            "participants with NAs created during factor conversion"
-        ))
-    }
-    if (nrow(contacts_dt) < rows_before_factor_na_filter_contacts) {
-        message(paste(
-            "  Filtered", rows_before_factor_na_filter_contacts - nrow(contacts_dt),
-            "contacts with NAs created during factor conversion"
-        ))
-    }
-
-    message(paste0("Survey data pre-processing complete."))
-    if (nrow(participants_dt) < initial_rows_participants) {
-        message(paste("  Filtered", initial_rows_participants - nrow(participants_dt), "participants with 'Unknown' or NA values, leaving", nrow(participants_dt), "rows."))
-    }
-    if (nrow(contacts_dt) < initial_rows_contacts) {
-        message(paste("  Filtered", initial_rows_contacts - nrow(contacts_dt), "contacts with 'Unknown' or NA values post-imputation, leaving", nrow(contacts_dt), "rows."))
-    }
+    # Do NOT factorize to final levels here (age bands may change per analysis),
+    # and do NOT drop rows yet. Downstream functions will factor and filter as needed.
+    message(paste0("Survey data pre-processing complete. Participants: ", nrow(participants_dt), ", Contacts: ", nrow(contacts_dt)))
 
     # Note: Population weighting will be applied later in the pipeline when census data is available
     # This allows for flexible weighting based on different stratification configurations
@@ -1991,7 +2063,8 @@ perform_single_stratified_ngm_calculation_set <- function(
             # 2. Simple day-of-week weighting only (avoids demographic weighting complexities)
             # Day of week is never a stratification variable, so this is always safe
             message("Applying day-of-week weighting only (weekday vs weekend sampling bias correction)")
-            population_weights <- create_day_of_week_weights(survey_cols_prepared$participants_strat_cols)
+            # Use full participants data here so we always have access to day_week
+            population_weights <- create_day_of_week_weights(participants_dt_iter)
 
             # 3. Calculate participant denominators (with population weighting)
             participant_denominators <- get_participant_denominators_stratified(

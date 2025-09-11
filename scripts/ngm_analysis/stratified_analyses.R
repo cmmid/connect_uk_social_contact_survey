@@ -39,7 +39,9 @@ message(paste("Sourced plotting functions from:", plotting_functions_script))
 # --- Global Parameters & Paths ---
 message("Defining global parameters and paths...")
 # Data paths (relative to project root via here::here())
-RAW_SURVEY_DATA_RDS_PATH <- here::here("data", "reconnect_survey.rds")
+# Prefer Zenodo CSV directory if present; fall back to legacy RDS
+ZENODO_DIR <- here::here("data", "zenodo")
+RAW_SURVEY_DATA_RDS_PATH <- if (dir.exists(ZENODO_DIR)) ZENODO_DIR else here::here("data", "reconnect_survey.rds")
 
 # Paths for new 2-way stratified census files
 CENSUS_DATA_AGE_ETH_QS_PATH <- here::here("data", "derived", "census_age_eth_data.qs")
@@ -139,7 +141,7 @@ ANALYSIS_CONFIGURATIONS <- list(
         analysis_type_name = "Eth_Only_Stratified",
         stratification_vars = c("Ethnicity"),
         reference_group_strata = list(Ethnicity = "White"),
-        census_data_path = here::here("data", "derived", "census_ethnicity_only.qs")
+        census_data_path = CENSUS_DATA_AGE_ETH_QS_PATH
     ),
     list(
         analysis_type_name = "SES_Only_Stratified",

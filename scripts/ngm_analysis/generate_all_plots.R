@@ -311,11 +311,50 @@ generate_stratified_plots <- function() {
         )
     }
 
-    # Generate RR plots (basic, without overall ribbons)
+    # Generate RR plots (basic, without overall ribbons) using consolidated config
     message("Generating stratified relative risk plots...")
-    # TODO: Implement basic RR plots using consolidated functions
-    # For now, using the existing deprecated script
-    source(here::here("scripts", "ngm_analysis", "deprecated", "create_combined_plots.R"))
+    configs <- get_analysis_configs("stratified")
+    all_results <- load_analysis_results(configs, MAIN_CACHE_DIR, "stratified")
+
+    plots <- list()
+    for (config in configs) {
+        if (config$name %in% names(all_results)) {
+            res <- all_results[[config$name]]
+            if (!is.null(res$relative_burden_summary_dt) && nrow(res$relative_burden_summary_dt) > 0) {
+                plot_data <- copy(res$relative_burden_summary_dt)
+                if (!is.null(config$filter_func)) {
+                    plot_data <- config$filter_func(plot_data)
+                }
+                # Determine axes
+                x_variable <- config$x_var %||% "Age"
+                facet_var <- config$facet_var %||% NULL
+                # Build plot
+                p <- create_demographic_plot(
+                    data_dt = plot_data,
+                    value_col = "RelativeBurden_mean",
+                    ci_lower_col = if ("RelativeBurden_lowerCI" %in% names(plot_data)) "RelativeBurden_lowerCI" else NULL,
+                    ci_upper_col = if ("RelativeBurden_upperCI" %in% names(plot_data)) "RelativeBurden_upperCI" else NULL,
+                    x_var = x_variable,
+                    facet_var = facet_var,
+                    plot_title = paste0(config$title %||% paste("By", paste(c(x_variable, facet_var), collapse = " × "))),
+                    y_label = "Relative Risk of Infection (vs Reference)",
+                    plot_type = "pointrange",
+                    use_log_scale = TRUE
+                )
+                plots[[config$name]] <- p
+            }
+        }
+    }
+
+    if (length(plots) > 0) {
+        combined <- create_combined_plot(plots, layout = "grid")
+        save_plot_files(
+            combined,
+            file.path(output_dir, "combined_risk_ratio_basic"),
+            width = 20, height = 14,
+            message_text = "Saved combined stratified Relative Risk plot to:"
+        )
+    }
 
     message("Stratified plots completed!")
     message("Saved to:", output_dir)

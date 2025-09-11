@@ -2,3 +2,9 @@ cache/
 data/derived/
 data/zenodo/
 results/
+
+/.quarto/
+.DS_Store
+*.qmd
+references.bib
+ngm_analysis*

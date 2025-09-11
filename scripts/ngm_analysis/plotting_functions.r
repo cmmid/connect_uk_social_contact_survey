@@ -243,7 +243,14 @@ save_plot_files <- function(plot, filename_base, width = 12, height = 10, messag
 # --- Function to filter SES data consistently ---
 filter_ses_data <- function(data_dt, exclude_categories = c("Unknown", "Retired", "Under 17")) {
     if ("SES" %in% names(data_dt)) {
-        return(data_dt[!SES %in% exclude_categories])
+        filtered_dt <- data_dt[!SES %in% exclude_categories]
+        # If this dataset also includes Age (e.g., Age × NS-SeC),
+        # remove child age bands so minors do not appear under NS-SeC 1–7.
+        if ("Age" %in% names(filtered_dt)) {
+            child_age_bands <- c("0-4", "5-9", "10-14", "15-19")
+            filtered_dt <- filtered_dt[!Age %in% child_age_bands]
+        }
+        return(filtered_dt)
     }
     return(data_dt)
 }
